@@ -10,21 +10,13 @@ services:
       - mongodb
     volumes:
       - ./back-cs2-case-opening:/app
-      - /app/node_modules
-    environment:
-      NODE_ENV: development
-      CHOKIDAR_USEPOLLING: "true"
-      WATCHPACK_POLLING: "true"
 
   mongodb:
     image: mongo:7
     container_name: cs2-mongodb
     ports:
       - "${MONGO_PORT}:27017"
-    environment:
-      MONGO_INITDB_DATABASE: ${MONGO_DB}
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+    env_file: .env
     volumes:
       - mongo_data:/data/db
       - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
@@ -39,15 +31,11 @@ services:
     container_name: cs2-mongo-express
     restart: always
     ports:
-      - "8081:8081"
+      - "${MONGO_EXPRESS_PORT}:8081"
     depends_on:
       mongodb:
         condition: service_healthy
-    environment:
-      ME_CONFIG_MONGODB_URL: "mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/${MONGO_DB}?authSource=admin"
-      ME_CONFIG_BASICAUTH_ENABLED: "true"
-      ME_CONFIG_BASICAUTH_USERNAME: "${MONGO_EXPRESS_USER}"
-      ME_CONFIG_BASICAUTH_PASSWORD: "${MONGO_EXPRESS_PASS}"
+    env_file: .env
 
 volumes:
   mongo_data:
