@@ -138,20 +138,18 @@ db.users.insertMany([
   {
     _id: ObjectId("66e0b5e7f1c2ab1234567800"),
     pseudo: "PlayerOne",
-    password: "hashed_password_1", // ⚠️ normalement hashé (bcrypt)
+    password: "$2b$10$y5iTgSMo6h5Gn1CetRgY4.BsXQI0RyoMGnrwSB55KFsC8zow..0Qq", //monpassword
     role: "user",
-    createdAt: new Date()
   },
   {
     _id: ObjectId("66e0b5e7f1c2ab1234567801"),
     pseudo: "AdminUser",
-    password: "hashed_password_admin",
+    password: "$2b$10$Aua49TTzePfzV3BNB4A5F.08BsjfwUQlPYy9HE1aZoSTnbkSmWVtq", //monpassword2
     role: "admin",
-    createdAt: new Date()
   }
 ]);
 
 // -----------------------------
-// Collection Inventory
+// Collection Inventories
 // -----------------------------
-db.createCollection("inventory");
+db.createCollection("inventories");
