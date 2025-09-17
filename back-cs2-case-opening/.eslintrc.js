@@ -17,9 +17,13 @@ module.exports = {
   },
   ignorePatterns: ['.eslintrc.js'],
   rules: {
+    'prettier/prettier': ['error'], // Active Prettier dans ESLint
     '@typescript-eslint/interface-name-prefix': 'off',
     '@typescript-eslint/explicit-function-return-type': 'off',
     '@typescript-eslint/explicit-module-boundary-types': 'off',
     '@typescript-eslint/no-explicit-any': 'off',
+     // Règles perso
+    'no-console': ['warn', { allow: ['warn', 'error'] }],
+    '@typescript-eslint/no-unused-vars': ['error'],
   },
 };
