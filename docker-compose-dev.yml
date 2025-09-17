@@ -1,0 +1,41 @@
+services:
+
+  api:
+    build: ./back-cs2-case-opening
+    container_name: cs2-api
+    ports:
+      - "${API_PORT}:${API_PORT}"
+    env_file: .env
+    depends_on:
+      - mongodb
+    volumes:
+      - ./back-cs2-case-opening:/app
+
+  mongodb:
+    image: mongo:7
+    container_name: cs2-mongodb
+    ports:
+      - "${MONGO_PORT}:27017"
+    env_file: .env
+    volumes:
+      - mongo_data:/data/db
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    healthcheck:
+      test: ["CMD", "mongosh", "--username", "${MONGO_INITDB_ROOT_USERNAME}", "--password", "${MONGO_INITDB_ROOT_PASSWORD}", "--authenticationDatabase", "admin", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 2
+
+  mongo-express:
+    image: mongo-express
+    container_name: cs2-mongo-express
+    restart: always
+    ports:
+      - "${MONGO_EXPRESS_PORT}:8081"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    env_file: .env
+
+volumes:
+  mongo_data:

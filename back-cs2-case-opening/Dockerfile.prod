@@ -1,0 +1,47 @@
+# --------- Étape 1 : deps (cachable dans CI/CD) ---------
+    FROM node:20-alpine AS deps
+
+    WORKDIR /app
+    
+    # Copier uniquement package.json + lockfile (déclenche le cache uniquement si ça change)
+    COPY package*.json ./
+    
+    # Installer toutes les dépendances (y compris dev pour build & tests)
+    RUN npm ci
+    
+    
+    # --------- Étape 2 : builder ---------
+    FROM deps AS builder
+    
+    WORKDIR /app
+    
+    # Copier le reste du code source
+    COPY . .
+    
+    
+    # Compiler l’application (TS -> JS)
+    RUN npm run build
+    
+    # Nettoyer les devDependencies après build
+    RUN npm prune --omit=dev
+    
+    
+    # --------- Étape 3 : runner (image finale prod) ---------
+    FROM node:20-alpine AS runner
+    
+    WORKDIR /app
+    ENV NODE_ENV=production
+    
+    # Créer un utilisateur non-root
+    RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+    
+    # Copier uniquement ce qui est nécessaire depuis builder
+    COPY --from=builder /app/node_modules ./node_modules
+    COPY --from=builder /app/dist ./dist
+    COPY package*.json ./
+    
+    USER appuser
+    
+    EXPOSE 3000
+    CMD ["node", "dist/main.js"]
+    
