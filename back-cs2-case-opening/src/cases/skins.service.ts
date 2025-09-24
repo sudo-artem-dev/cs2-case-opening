@@ -29,8 +29,9 @@ export class SkinsService {
       throw new NotFoundException('Skin introuvable (supprimé ou inexistant).');
     }
 
-    // 🔥 Corrige l'URL de l'image
-    skin.imageUrl = `http://localhost:3000/uploads/${skin.imageUrl}`;
+    // Génère une URL absolue à partir de BASE_URL
+    const baseUrl = process.env.BASE_URL;
+    skin.imageUrl = `${baseUrl}/uploads/${skin.imageUrl}`;
 
     return skin;
   }

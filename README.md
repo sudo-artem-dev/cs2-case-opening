@@ -28,7 +28,7 @@ cp .env.example .env       # Développement
 cp .env.example .env.prod  # Production
 ```
 
-* `.env` → développement (`NODE_ENV=development`)
+* `.env` → développement (`NODE_ENV=development`, etc)
 * `.env.prod` → production (`NODE_ENV=production`, mots de passe réels, etc.)
 
 ---
@@ -108,3 +108,108 @@ docker compose -f docker-compose-prod.yml --env-file .env.prod down
 * **API NestJS** se connecte automatiquement à MongoDB via les variables définies dans `.env` ou `.env.prod`.
 * En **développement**, tu peux explorer la base avec **Mongo Express** → [http://localhost:8081](http://localhost:8081).
 * En **production**, seuls l’API et MongoDB tournent → plus **léger et sécurisé**.
+
+---
+
+## Lancement du Frontend (front-cs2-case-opening)
+
+### Fichiers d’environnement
+
+Créer deux fichiers dans le dossier `front-cs2-case-opening/` :
+
+#### `.env.development`
+
+```env
+EXPO_PUBLIC_API_URL=http://192.168.1.25:3000
+```
+
+#### `.env.production`
+
+```env
+EXPO_PUBLIC_API_URL=https://api.mondomaine.com
+```
+
+Remplacer **`192.168.1.25`** par l’IP locale de ton PC si tu testes sur smartphone physique avec **Expo Go**.
+
+Dans ton code, tu récupères l’URL de l’API ainsi :
+
+```ts
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
+```
+
+---
+
+### Installation des dépendances
+
+```bash
+cd front-cs2-case-opening
+npm install
+```
+
+---
+
+### Scripts disponibles
+
+Dans `package.json` du frontend, configure les scripts :
+
+```json
+"scripts": {
+  "start:dev": "expo start --clear",
+  "start:prod": "expo start --clear",
+  "android": "expo start --android",
+  "ios": "expo start --ios",
+  "web": "expo start --web"
+}
+```
+
+Expo charge automatiquement les fichiers `.env.development` ou `.env.production` selon le mode.
+Le `--clear` permet de vider le cache Metro à chaque démarrage.
+
+---
+
+### Lancer en développement
+
+```bash
+npm run start:dev
+```
+
+### Lancer en production
+
+```bash
+npm run start:prod
+```
+
+---
+
+### Disponible aussi sur le web
+
+Expo démarre également un serveur web local :
+
+* Par défaut, Expo utilise le port **8081**.
+* Mais dans ce projet, le **Backend (Mongo Express)** occupe déjà ce port.
+* Expo se décale automatiquement sur le port suivant disponible → **[http://localhost:8082](http://localhost:8082)**.
+
+En développement, ouvrez **[http://localhost:8082](http://localhost:8082)** pour tester le frontend dans un navigateur.
+
+---
+
+### Tester sur smartphone
+
+* Scanner le **QR Code** affiché dans le terminal ou Expo DevTools avec l’app **Expo Go**.
+* Vérifier que le **téléphone et le PC soient sur le même réseau Wi-Fi**.
+
+---
+
+## Vérification du bon fonctionnement
+
+* **Backend** : vérifier avec `docker ps` que l’API et MongoDB tournent.
+* **Frontend** : l’application doit s’afficher et appeler l’API via `EXPO_PUBLIC_API_URL`.
+
+---
+
+## Explication rapide
+
+* **Frontend (React Native + Expo)** : utilise des variables d’environnement statiques avec le préfixe `EXPO_PUBLIC_`.
+* **Dev** → API locale + Expo Go / Web.
+* **Prod** → API déployée + build mobile.
+
