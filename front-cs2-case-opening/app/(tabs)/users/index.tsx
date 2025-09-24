@@ -18,6 +18,7 @@ export default function UserScreen() {
   const [users, setUsers] = useState<UserData[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const { apiFetch } = useApi();
+  const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
   useEffect(() => {
     if (!loading) {
@@ -30,7 +31,7 @@ export default function UserScreen() {
   const fetchUsers = async () => {
     try {
       setLoadingUsers(true);
-      const res = await apiFetch("http://localhost:3000/users");
+      const res = await apiFetch(`${API_URL}/users`);
       if (!res) return;
       const data = await res.json();
       setUsers(data);

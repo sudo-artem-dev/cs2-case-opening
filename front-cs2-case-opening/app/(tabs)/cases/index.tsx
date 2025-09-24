@@ -17,6 +17,7 @@ export default function HomeScreen() {
 
   const [cases, setCases] = useState<CaseType[]>([]);
   const [loadingCases, setLoadingCases] = useState(true);
+  const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
   useEffect(() => {
     if (!loading && !user) {
@@ -29,7 +30,7 @@ export default function HomeScreen() {
       if (!user) return;
       try {
         setLoadingCases(true);
-        const response = await apiFetch("http://localhost:3000/cases");
+        const response = await apiFetch(`${API_URL}/cases`);
         if (!response) return;
         const data = await response.json();
         setCases(data);
