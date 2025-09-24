@@ -22,7 +22,7 @@ export class CasesService {
   private buildImageUrl(path: string): string {
     if (!path) return null;
     // 👉 ici on génère un chemin absolu
-    const baseUrl = process.env.EXPO_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.BASE_URL;
     return `${baseUrl}/uploads/${path}`;
   }
 
