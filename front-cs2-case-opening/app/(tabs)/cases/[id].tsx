@@ -106,7 +106,8 @@ export default function CaseDetailScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const scrollX = useRef(new Animated.Value(0)).current;
   const wonAppear = useRef(new Animated.Value(0)).current;
-  
+  const API_URL = process.env.EXPO_PUBLIC_API_URL;
+
   useEffect(() => {
     const sub = scrollX.addListener(({ value }) => {
       scrollRef.current?.scrollTo({ x: value, animated: false });
@@ -131,7 +132,7 @@ export default function CaseDetailScreen() {
   useEffect(() => {
     const fetchCase = async () => {
       try {
-        const res = await apiFetch(`http://localhost:3000/cases/${id}`);
+        const res = await apiFetch(`${API_URL}/cases/${id}`);
         if (!res) return;
         const data = await res.json();
         setCaseDetail(data);
@@ -177,7 +178,7 @@ export default function CaseDetailScreen() {
 
       // 1) Récupère le skin gagné (référence serveur)
       const res = await apiFetch(
-        `http://localhost:3000/cases/${caseDetail._id}/open`,
+        `${API_URL}/cases/${caseDetail._id}/open`,
         { method: "POST" }
       );
       if (!res) return;
@@ -237,7 +238,7 @@ export default function CaseDetailScreen() {
           useNativeDriver: false,
         }).start(async () => {
           try {
-            const skinRes = await apiFetch(`http://localhost:3000/skins/${wonSkinId}`);
+            const skinRes = await apiFetch(`${API_URL}/skins/${wonSkinId}`);
             if (!skinRes) throw new Error("Erreur lors du chargement du skin gagné");
             const skinData = await skinRes.json();
             setWonSkinInline(skinData);
@@ -441,7 +442,7 @@ export default function CaseDetailScreen() {
               style={styles.skinCard}
               onPress={async () => {
                 try {
-                  const res = await apiFetch(`http://localhost:3000/skins/${item._id}`);
+                  const res = await apiFetch(`${API_URL}/skins/${item._id}`);
                   if (!res) return;
                   const text = await res.text();
                   let data: any = null;
@@ -542,7 +543,7 @@ export default function CaseDetailScreen() {
                     probability: parseFloat(String(p.probability).replace(",", ".")) || 0,
                   }));
 
-                  const res = await apiFetch(`http://localhost:3000/cases/${caseDetail!._id}`, {
+                  const res = await apiFetch(`${API_URL}/cases/${caseDetail!._id}`, {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ rarityProbabilities: sanitized }),

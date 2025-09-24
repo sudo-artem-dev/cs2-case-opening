@@ -9,6 +9,7 @@ export default function LoginScreen() {
   const [errorMessage, setErrorMessage] = useState("");
   const router = useRouter();
   const { login } = useAuth();
+  const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
   const handleLogin = async () => {
     if (!pseudo || !password) {
@@ -16,7 +17,7 @@ export default function LoginScreen() {
       return;
     }
     try {
-      const response = await fetch("http://localhost:3000/auth/login", {
+      const response = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pseudo, password }),

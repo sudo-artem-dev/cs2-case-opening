@@ -31,6 +31,8 @@ export default function InventoryScreen() {
   const [selectedSkin, setSelectedSkin] = useState<Skin | null>(null);
   const [selectedCaseName, setSelectedCaseName] = useState<string>("");
 
+  const API_URL = process.env.EXPO_PUBLIC_API_URL;
+
   const rarityColors: Record<string, string> = {
     "Mil-Spec": "#4b69ff",
     "Restricted": "#8847ff",
@@ -52,7 +54,7 @@ export default function InventoryScreen() {
       (async () => {
         try {
           setLoadingInv(true);
-          const res = await apiFetch(`http://localhost:3000/users/${user?._id}/inventory`);
+          const res = await apiFetch(`${API_URL}/users/${user?._id}/inventory`);
           if (!res || cancelled) return; // 401 géré par apiFetch
           const data = await res.json();
           if (!cancelled) setInventory(data);
@@ -96,7 +98,24 @@ export default function InventoryScreen() {
         </Text>
       </View>
 
-      {/* Grille des skins */}
+    {/* Liste ou état vide */}
+    {inventory.totalSkins === 0 ? (
+      <View style={styles.emptyWrap}>
+        <Text style={styles.emptyTitle}>Inventaire vide</Text>
+        <Text style={styles.emptySubtitle}>
+          Ouvre des caisses pour obtenir tes premiers skins.
+        </Text>
+
+        <TouchableOpacity
+          style={styles.openCasesBtn}
+          onPress={() => router.push("/cases")}
+          accessibilityRole="button"
+          accessibilityLabel="Ouvrir les caisses"
+        >
+          <Text style={styles.openCasesBtnText}>Ouvrir des caisses</Text>
+        </TouchableOpacity>
+      </View>
+    ) : (
       <FlatList
         data={inventory.skins}
         numColumns={3}
@@ -110,13 +129,13 @@ export default function InventoryScreen() {
               try {
                 setSelectedSkin(item);
                 setSelectedCaseName("");
-            
-                const res1 = await apiFetch(`http://localhost:3000/skins/${item.skinId}`);
+
+                const res1 = await apiFetch(`${API_URL}/skins/${item.skinId}`);
                 if (!res1) return;
                 const skinDet: Skin = await res1.json();
-            
+
                 if (skinDet.case_id) {
-                  const res2 = await apiFetch(`http://localhost:3000/cases/${skinDet.case_id}`);
+                  const res2 = await apiFetch(`${API_URL}/cases/${skinDet.case_id}`);
                   if (res2 && res2.ok) {
                     const caseData = await res2.json();
                     setSelectedCaseName(caseData.name || "");
@@ -128,7 +147,7 @@ export default function InventoryScreen() {
             }}
           >
             <Image
-              source={{ uri: `http://localhost:3000/uploads/${item.imageUrl}` }}
+              source={{ uri: `${API_URL}/uploads/${item.imageUrl}` }}
               style={styles.skinImage}
               resizeMode="contain"
             />
@@ -146,6 +165,7 @@ export default function InventoryScreen() {
           </TouchableOpacity>
         )}
       />
+    )}
 
       {/* Modal skin agrandi */}
       <Modal visible={!!selectedSkin} transparent animationType="fade">
@@ -168,7 +188,7 @@ export default function InventoryScreen() {
                 </Text>
 
                 <Image
-                  source={{ uri: `http://localhost:3000/uploads/${selectedSkin.imageUrl}` }}
+                  source={{ uri: `${API_URL}/uploads/${selectedSkin.imageUrl}` }}
                   style={styles.largeImage}
                   resizeMode="contain"
                 />
@@ -303,4 +323,34 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     textAlign: "center",
   },
+  emptyWrap: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+  },
+  emptyTitle: {
+    color: "#fff",
+    fontSize: 20,
+    fontWeight: "700",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  emptySubtitle: {
+    color: "#cfcfd6",
+    fontSize: 14,
+    textAlign: "center",
+    marginBottom: 18,
+  },
+  openCasesBtn: {
+    backgroundColor: "#1f1e24",
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: 12,
+  },
+  openCasesBtnText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },  
 });
