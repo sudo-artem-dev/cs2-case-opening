@@ -4,13 +4,7 @@ import { useRouter } from "expo-router";
 import { useEffect, useState, useCallback } from "react";
 import { useApi } from "@/hooks/useApi";
 import { useFocusEffect } from "@react-navigation/native";
-
-type UserData = {
-  _id: string;
-  pseudo: string;
-  skinsCount: number;
-  inventoryValue: number;
-};
+import { saveUsersLocal, getUsersLocal, UserData } from "@/services/userService";
 
 export default function UserScreen() {
   const { user, loading } = useAuth();
@@ -32,11 +26,24 @@ export default function UserScreen() {
     try {
       setLoadingUsers(true);
       const res = await apiFetch(`${API_URL}/users`);
-      if (!res) return;
-      const data = await res.json();
+      if (!res) {
+        // fallback → données locales
+        const localUsers = await getUsersLocal();
+        setUsers(localUsers);
+        return;
+      }
+  
+      const data: UserData[] = await res.json();
       setUsers(data);
+  
+      // Sauvegarde locale
+      await saveUsersLocal(data);
     } catch (err) {
       console.error("Erreur fetch users:", err);
+  
+      // fallback → offline
+      const localUsers = await getUsersLocal();
+      setUsers(localUsers);
     } finally {
       setLoadingUsers(false);
     }

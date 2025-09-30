@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { useRouter } from "expo-router";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+} from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/context/AuthContext";
 
 export default function LoginScreen() {
@@ -16,34 +24,64 @@ export default function LoginScreen() {
       setErrorMessage("Veuillez remplir tous les champs.");
       return;
     }
+
     try {
+      // --- Essai ONLINE ---
       const response = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pseudo, password }),
       });
-      if (!response.ok) throw new Error("Identifiants invalides");
 
-      const data = await response.json();
-      await login({
-        _id: data._id,
-        pseudo: data.pseudo,
-        role: data.role,
-        token: data.token,
-      });
+      if (response.ok) {
+        const data = await response.json();
 
-      setErrorMessage("");
-      router.replace("/(tabs)/cases");
-    } catch (error: any) {
-      console.error(error);
-      setErrorMessage(error.message || "Connexion échouée");
+        await login({
+          _id: data._id,
+          pseudo: data.pseudo,
+          role: data.role,
+          token: data.token,
+        });
+
+        setErrorMessage("");
+        router.replace("/(tabs)/cases");
+        return;
+      }
+
+      throw new Error("Identifiants invalides");
+    } catch {
+      console.warn("Connexion online échouée, tentative offline…");
+
+      // --- Essai OFFLINE ---
+      try {
+        const storedUser = await AsyncStorage.getItem("user");
+        if (storedUser) {
+          const localUser = JSON.parse(storedUser);
+
+          if (localUser.pseudo === pseudo) {
+            // Pas de vérification du mot de passe en mode offline
+            await login(localUser);
+            router.replace("/(tabs)/cases");
+            return;
+          }
+        }
+        setErrorMessage("Impossible de se connecter (offline et pas de session locale)");
+      } catch (err) {
+        console.error("Erreur lecture AsyncStorage offline:", err);
+        setErrorMessage("Connexion échouée");
+      }
     }
   };
 
   return (
     <View style={styles.container}>
-      <Image source={require("../assets/images/cs2case.png")} style={styles.logo} resizeMode="contain" />
+      <Image
+        source={require("../assets/images/cs2case.png")}
+        style={styles.logo}
+        resizeMode="contain"
+      />
       <Text style={styles.title}>CS2 Case Opening</Text>
+
       <View style={styles.card}>
         <Text style={styles.heading}>Se connecter</Text>
 
@@ -67,7 +105,9 @@ export default function LoginScreen() {
           secureTextEntry
         />
 
-        {errorMessage ? <Text style={styles.errorMessage}>{errorMessage}</Text> : null}
+        {errorMessage ? (
+          <Text style={styles.errorMessage}>{errorMessage}</Text>
+        ) : null}
 
         <TouchableOpacity style={styles.button} onPress={handleLogin}>
           <Text style={styles.buttonText}>Connexion</Text>
