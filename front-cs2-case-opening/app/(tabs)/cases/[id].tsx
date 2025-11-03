@@ -19,6 +19,9 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
 import { useApi } from "@/hooks/useApi";
 import { useFocusEffect } from "@react-navigation/native";
+import { saveCaseDetailLocal, getCaseDetailLocal, saveSkinLocal, getSkinLocal } from "@/services/caseService";
+import { savePendingSkin } from "@/services/syncService";
+import { saveInventoryLocal, getInventoryLocal } from "@/services/inventoryService";
 
 type Skin = {
   _id: string;
@@ -131,14 +134,26 @@ export default function CaseDetailScreen() {
 
   useEffect(() => {
     const fetchCase = async () => {
+      setLoadingCase(true);
+      setCaseDetail(null);
+  
       try {
         const res = await apiFetch(`${API_URL}/cases/${id}`);
-        if (!res) return;
+        if (!res) throw new Error("NETWORK_OFFLINE");
         const data = await res.json();
-        setCaseDetail(data);
         setEditedProbabilities(data.rarityProbabilities || []);
+        setCaseDetail(data);
+        await saveCaseDetailLocal(data);
       } catch (err) {
         console.error("Erreur fetch case:", err);
+  
+        const localCase = await getCaseDetailLocal(id as string);
+        if (localCase) {
+          setCaseDetail(localCase);
+          setEditedProbabilities(localCase.rarityProbabilities || []);
+        } else {
+          setCaseDetail(null);
+        }
       } finally {
         setLoadingCase(false);
       }
@@ -170,104 +185,203 @@ export default function CaseDetailScreen() {
     setTimeout(() => setErrorMessage(null), 3000);
     if (!caseDetail) return;
 
-    try {
-      setIsOpening(true);
-      setSelectedSkin(null);
-      setRollingFinished(false);
-      setWonSkinInline(null);
+    const BASE = caseDetail.skins;
+    const REEL_LEN = 120;
+    const weights = buildRarityWeights(caseDetail.rarityProbabilities);
 
-      // 1) Récupère le skin gagné (référence serveur)
-      const res = await apiFetch(
-        `${API_URL}/cases/${caseDetail._id}/open`,
-        { method: "POST" }
-      );
-      if (!res) return;
+    const byRarity: Record<string, Skin[]> = {};
+    for (const s of BASE) (byRarity[s.rarity] ||= []).push(s);
+
+    const allowedRarities = new Set(BASE.map((s) => s.rarity));
+    const targetIndex = REEL_LEN - 10;
+
+    setIsOpening(true);
+    setSelectedSkin(null);
+    setRollingFinished(false);
+    setWonSkinInline(null);
+
+    try {
+      // ----------- MODE ONLINE -----------
+      const res = await apiFetch(`${API_URL}/cases/${caseDetail._id}/open`, {
+        method: "POST",
+      });
+
+      if (!res) {
+        throw new Error("NETWORK_OFFLINE");
+      }
 
       if (!res.ok) {
-        const text = await res.text();
-        let err: any = null;
-        try { err = JSON.parse(text); } catch {}
-        const message =
-          err?.message || `${res.status} ${res.statusText}` || "Erreur lors de l'ouverture";
-        throw new Error(message);
+        const txt = await res.text();
+        let body: any = null;
+        try { body = JSON.parse(txt); } catch {}
+        const msg = body?.message || `${res.status} ${res.statusText}`;
+        throw new Error(`LOGIC_ERROR:${msg}`);
       }
 
+      // Succès online
       const data = await res.json();
       const wonSkinId: string = data.skin.skinId;
-
-      // 2) Prépare la “roue” (aléatoire pondéré, TOUTES les raretés possibles)
-      const BASE = caseDetail.skins;
-      const REEL_LEN = 120;
-
-      const weights = buildRarityWeights(caseDetail.rarityProbabilities);
-
-      // map rareté -> liste de skins
-      const byRarity: Record<string, Skin[]> = {};
-      for (const s of BASE) (byRarity[s.rarity] ||= []).push(s);
-
-      // skin réellement gagné (placé à l'index cible)
       const wonSkin = BASE.find((s) => s._id === wonSkinId) || BASE[0];
 
-      // toutes les raretés présentes dans la caisse sont autorisées
-      const allowedRarities = new Set(BASE.map((s) => s.rarity));
-
-      // index d’arrêt (proche de la fin)
-      const targetIndex = REEL_LEN - 10;
-
-      const reel: Skin[] = new Array(REEL_LEN);
-      for (let i = 0; i < REEL_LEN; i++) {
-        if (i === targetIndex) continue; // on réserve la case gagnante
-        const rarity = pickRarity(weights, allowedRarities);   // inclut "Spécial Or"
-        const pool = byRarity[rarity] && byRarity[rarity].length ? byRarity[rarity] : BASE;
-        reel[i] = pickRandom(pool);
-      }
-      // place UNE SEULE FOIS le skin gagné
-      reel[targetIndex] = wonSkin;
-
-      setReelSkins(reel);
-
-      // 3) Animation
-      requestAnimationFrame(() => {
-        const finalOffset = targetIndex * CELL_W;
-
-        scrollX.setValue(0);
-        Animated.timing(scrollX, {
-          toValue: finalOffset,
-          duration: 10000,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: false,
-        }).start(async () => {
-          try {
-            const skinRes = await apiFetch(`${API_URL}/skins/${wonSkinId}`);
-            if (!skinRes) throw new Error("Erreur lors du chargement du skin gagné");
-            const skinData = await skinRes.json();
-            setWonSkinInline(skinData);
-            setRollingFinished(true);
-            wonAppear.setValue(0);
-            Animated.sequence([
-              Animated.delay(180), 
-              Animated.timing(wonAppear, {
-                toValue: 1,
-                duration: 1000,              
-                easing: Easing.out(Easing.cubic),
-                useNativeDriver: canUseNativeDriver,
-              }),
-            ]).start();
-          } catch {
-            setErrorMessage("Erreur lors du chargement du skin gagné");
-            setIsOpening(false);
-          }
-        });
-      });
+      await runRoulette(wonSkin, BASE, byRarity, weights, allowedRarities, targetIndex, true);
     } catch (err: any) {
-      setErrorMessage(err.message);
-      setIsOpening(false);
+      console.warn("❌ Erreur ouverture caisse:", err.message);
+
+      if (err.message.startsWith("LOGIC_ERROR:")) {
+        // Cas 422 / 500 côté serveur → bloquer
+        setErrorMessage(err.message.replace("LOGIC_ERROR:", ""));
+        setIsOpening(false);
+        return;
+      }
+
+      // Cas offline → bascule locale
+      const offlineErrors = [
+        "NETWORK_OFFLINE",
+        "Failed to fetch",
+        "fetch failed",
+        "Network request failed",
+        "ERR_ADDRESS_UNREACHABLE",
+      ];
+
+      if (offlineErrors.some((m) => err.message.includes(m))) {
+        console.warn("⚠️ Mode offline activé");
+
+        const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0);
+        if (totalWeight <= 0) {
+          setErrorMessage("Impossible d’ouvrir : probabilités invalides");
+          setIsOpening(false);
+          return;
+        }
+
+        const rarity = pickRarity(weights, allowedRarities);
+        const pool = byRarity[rarity]?.length ? byRarity[rarity] : BASE;
+        const wonSkin = pickRandom(pool);
+
+        // Sauvegarde locale + inventaire
+        await saveSkinLocal(wonSkin);
+        const localInv = await getInventoryLocal();
+        const newInv = localInv
+          ? {
+              ...localInv,
+              totalSkins: localInv.totalSkins + 1,
+              totalValue: localInv.totalValue + (wonSkin.cost || 0),
+              skins: [
+                ...localInv.skins,
+                {
+                  skinId: wonSkin._id,
+                  name: wonSkin.name,
+                  rarity: wonSkin.rarity,
+                  imageUrl: wonSkin.imageUrl,
+                  cost: wonSkin.cost || 0,
+                  case_id: caseDetail._id,
+                },
+              ],
+            }
+          : {
+              _id: user!._id,
+              totalSkins: 1,
+              totalValue: wonSkin.cost || 0,
+              skins: [
+                {
+                  skinId: wonSkin._id,
+                  name: wonSkin.name,
+                  rarity: wonSkin.rarity,
+                  imageUrl: wonSkin.imageUrl,
+                  cost: wonSkin.cost || 0,
+                  case_id: caseDetail._id,
+                },
+              ],
+            };
+        await saveInventoryLocal(newInv);
+
+        if (user?._id) {
+          await savePendingSkin(wonSkin, caseDetail._id, user._id);
+        }
+
+        await runRoulette(wonSkin, BASE, byRarity, weights, allowedRarities, targetIndex, false);
+      } else {
+        // autre erreur inconnue
+        setErrorMessage("Erreur inattendue: " + err.message);
+        setIsOpening(false);
+      }
     }
   };
 
-  if (loadingCase) return <ActivityIndicator size="large" color="#fff" />;
-  if (!caseDetail) return <Text style={{ color: "white" }}>Caisse introuvable</Text>;
+  /**
+   * Factorise l’animation roulette
+   */
+  async function runRoulette(
+    wonSkin: Skin,
+    BASE: Skin[],
+    byRarity: Record<string, Skin[]>,
+    weights: any,
+    allowedRarities: Set<string>,
+    targetIndex: number,
+    online: boolean
+  ) {
+    const REEL_LEN = 120;
 
+    const reel: Skin[] = new Array(REEL_LEN);
+    for (let i = 0; i < REEL_LEN; i++) {
+      if (i === targetIndex) continue;
+      const rarity = pickRarity(weights, allowedRarities);
+      const pool = byRarity[rarity]?.length ? byRarity[rarity] : BASE;
+      reel[i] = pickRandom(pool);
+    }
+    reel[targetIndex] = wonSkin;
+    setReelSkins(reel);
+
+    requestAnimationFrame(() => {
+      const finalOffset = targetIndex * CELL_W;
+      scrollX.setValue(0);
+      Animated.timing(scrollX, {
+        toValue: finalOffset,
+        duration: 10000,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }).start(async () => {
+        if (online) {
+          try {
+            const skinRes = await apiFetch(`${API_URL}/skins/${wonSkin._id}`);
+            if (skinRes) {
+              const skinData = await skinRes.json();
+              setWonSkinInline(skinData);
+            } else {
+              setWonSkinInline(wonSkin);
+            }
+          } catch {
+            setWonSkinInline(wonSkin);
+          }
+        } else {
+          setWonSkinInline(wonSkin);
+        }
+
+        setRollingFinished(true);
+        wonAppear.setValue(0);
+        Animated.sequence([
+          Animated.delay(180),
+          Animated.timing(wonAppear, {
+            toValue: 1,
+            duration: 1000,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: canUseNativeDriver,
+          }),
+        ]).start();
+      });
+    });
+  }
+
+  if (loadingCase) return <ActivityIndicator size="large" color="#fff" />;
+  if (!caseDetail) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <Text style={{ color: "white", fontSize: 20, fontWeight: "600", textAlign: "center" }}>
+          Caisse introuvable
+        </Text>
+      </View>
+    );
+  }
+  
   return (
     <View style={styles.container}>
       <Text style={styles.caseTitle}>Caisse {caseDetail.name}</Text>
@@ -360,7 +474,6 @@ export default function CaseDetailScreen() {
                     {item.rarity === "Spécial Or" ? "★ " : ""}
                     {item.name}
                   </Text>
-                  {item.cost && <Text style={styles.rollingPrice}>{item.cost.toFixed(2)} €</Text>}
                 </View>
               </View>
             ))}
@@ -454,6 +567,12 @@ export default function CaseDetailScreen() {
                   setSelectedSkin(data);
                 } catch (err) {
                   console.error("Erreur fetch skin:", err);
+
+                  // fallback offline
+                  const localSkin = await getSkinLocal(item._id);
+                  if (localSkin) {
+                    setSelectedSkin(localSkin);
+                  }
                 }
               }}
             >

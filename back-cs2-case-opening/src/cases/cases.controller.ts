@@ -20,6 +20,11 @@ import { Role } from '../auth/roles.decorator';
 export class CasesController {
   constructor(private readonly casesService: CasesService) {}
 
+  @Get('ping')
+  async ping() {
+    return { status: 'ok' };
+  }
+
   @Get()
   @UseGuards(JwtAuthGuard)
   async findAll() {
@@ -67,5 +72,21 @@ export class CasesController {
 
       throw new InternalServerErrorException('Erreur serveur.');
     }
+  }
+  @Post(':id/sync')
+  @UseGuards(JwtAuthGuard)
+  async syncOfflineSkin(
+    @Param('id') caseId: string,
+    @Body()
+    body: {
+      userId: string;
+      skinId: string;
+      name: string;
+      rarity: string;
+      imageUrl: string;
+      cost?: number;
+    },
+  ) {
+    return this.casesService.syncOfflineSkin(caseId, body);
   }
 }

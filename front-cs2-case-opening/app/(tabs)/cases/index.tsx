@@ -3,12 +3,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { useApi } from "@/hooks/useApi";
-
-type CaseType = {
-  _id: string;
-  name: string;
-  imageUrl: string;
-};
+import { getCasesLocal, saveCasesLocal, CaseType } from "@/services/caseService";
 
 export default function HomeScreen() {
   const { user, loading } = useAuth();
@@ -28,12 +23,25 @@ export default function HomeScreen() {
   useEffect(() => {
     const fetchCases = async () => {
       if (!user) return;
+
+      setLoadingCases(true);
+
       try {
-        setLoadingCases(true);
+        // 1. Charger depuis AsyncStorage (offline)
+        const localCases = await getCasesLocal();
+        if (localCases.length > 0) {
+          setCases(localCases);
+        }
+
+        // 2. Essayer depuis l’API (online)
         const response = await apiFetch(`${API_URL}/cases`);
-        if (!response) return;
-        const data = await response.json();
-        setCases(data);
+        if (response) {
+          const data = await response.json();
+          setCases(data);
+
+          // 3. Sauvegarder en local
+          await saveCasesLocal(data);
+        }
       } catch (error) {
         console.error("Erreur de récupération des caisses:", error);
       } finally {
@@ -45,11 +53,7 @@ export default function HomeScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  if (loading) {
-    return null;
-  }
-
-  if (!user) return null;
+  if (loading || !user) return null;
 
   return (
     <View style={styles.container}>
@@ -71,7 +75,11 @@ export default function HomeScreen() {
               onPress={() => router.push(`/cases/${item._id}`)}
             >
               <View style={styles.divider} />
-              <Image source={{ uri: item.imageUrl }} style={styles.caseImage} resizeMode="contain" />
+              <Image
+                source={{ uri: item.imageUrl }}
+                style={styles.caseImage}
+                resizeMode="contain"
+              />
               <Text style={styles.caseName}>{item.name}</Text>
             </TouchableOpacity>
           )}
@@ -82,11 +90,7 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#111015",
-    padding: 15,
-  },
+  container: { flex: 1, backgroundColor: "#111015", padding: 15 },
   title: {
     fontSize: 24,
     fontWeight: "bold",
@@ -102,16 +106,8 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     width: "48%",
   },
-  caseImage: {
-    width: 100,
-    height: 80,
-    marginBottom: 8,
-  },
-  caseName: {
-    color: "#fff",
-    fontSize: 14,
-    textAlign: "center",
-  },
+  caseImage: { width: 100, height: 80, marginBottom: 8 },
+  caseName: { color: "#fff", fontSize: 14, textAlign: "center" },
   divider: {
     width: "80%",
     height: 3,

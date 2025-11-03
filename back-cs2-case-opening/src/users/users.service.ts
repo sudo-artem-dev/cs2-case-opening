@@ -35,14 +35,14 @@ export class UsersService {
         .populate('skin_id')
         .exec();
 
-      // Ici on dit à TS : "ok skin_id est bien un Skin"
+      const baseUrl = process.env.BASE_URL;
       const skins = inventory.map((inv) => {
         const skin = inv.skin_id as unknown as Skin;
         return {
           skinId: skin._id,
           name: skin.name,
           rarity: skin.rarity,
-          imageUrl: skin.imageUrl,
+          imageUrl: `${baseUrl}/uploads/${skin.imageUrl}`,
           cost: skin.cost,
         };
       });
@@ -62,23 +62,13 @@ export class UsersService {
     const results = [];
 
     for (const u of users) {
-      const inventories = await this.inventoryModel
-        .find({ user_id: u._id })
-        .lean()
-        .exec();
-
-      const skins = await this.skinModel
-        .find({ _id: { $in: inventories.map((i) => i.skin_id) } })
-        .lean()
-        .exec();
-
-      const totalValue = skins.reduce((sum, s) => sum + (s.cost ?? 0), 0);
+      const inv = await this.getUserInventory(u._id.toString());
 
       results.push({
         _id: u._id,
         pseudo: u.pseudo,
-        skinsCount: inventories.length,
-        inventoryValue: totalValue,
+        skinsCount: inv.totalSkins,
+        inventoryValue: inv.totalValue,
       });
     }
 
