@@ -19,8 +19,23 @@ export class CasesService {
     private inventoryModel: Model<InventoryDocument>,
   ) {}
 
-  async findAll(): Promise<Case[]> {
-    return this.caseModel.find({}, { _id: 1, name: 1, imageUrl: 1 }).exec();
+  private buildImageUrl(path: string): string {
+    if (!path) return null;
+    // 👉 ici on génère un chemin absolu
+    const baseUrl = process.env.BASE_URL;
+    return `${baseUrl}/uploads/${path}`;
+  }
+
+  async findAll(): Promise<any[]> {
+    const cases = await this.caseModel
+      .find({}, { _id: 1, name: 1, imageUrl: 1 })
+      .lean()
+      .exec();
+
+    return cases.map((c) => ({
+      ...c,
+      imageUrl: this.buildImageUrl(c.imageUrl), // ex: "galerie.png" → "http://localhost:3000/uploads/galerie.png"
+    }));
   }
 
   async findOne(id: string): Promise<any> {
@@ -42,9 +57,17 @@ export class CasesService {
         { case_id: new Types.ObjectId(id) },
         { _id: 1, name: 1, rarity: 1, imageUrl: 1 },
       )
+      .lean()
       .exec();
 
-    return { ...caseObj, skins };
+    return {
+      ...caseObj,
+      imageUrl: this.buildImageUrl(caseObj.imageUrl),
+      skins: skins.map((s) => ({
+        ...s,
+        imageUrl: this.buildImageUrl(s.imageUrl),
+      })),
+    };
   }
 
   async openCase(caseId: string, userId: string, testRandom?: number) {
