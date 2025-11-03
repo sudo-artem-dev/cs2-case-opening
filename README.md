@@ -16,12 +16,13 @@ Avant de commencer, assurez-vous d’avoir installé :
 ## Installation du projet  
 
 ### Cloner le projet  
+Dans le dossier que vous avez créé ou dans votre répertoire préféré
 ```bash
 git clone https://github.com/<ton-username>/cs2-case-opening.git
 cd cs2-case-opening
 ````
 
-### Créer les fichiers d’environnement
+### Créer les fichiers d’environnement à la racine du projet /cs2-case-opening
 
 ```bash
 cp .env.example .env       # Développement
@@ -41,7 +42,11 @@ Ce mode inclut :
 * Mongo Express (UI web pour MongoDB)
 
 ### Démarrer les conteneurs
-
+Allez dans le dossier /back-cs2-case-opening :
+```bash
+cd /back-cs2-case-opening
+```
+Puis exécutez:
 ```bash
 docker-compose -f docker-compose-dev.yml up --build
 ```
@@ -65,6 +70,10 @@ docker-compose -f docker-compose-dev.yml down
 Ce mode utilise une image optimisée (`Dockerfile.prod`) **sans Mongo Express**.
 
 ### Démarrer en arrière-plan
+Allez dans le dossier /back-cs2-case-opening :
+```bash
+cd /back-cs2-case-opening
+```
 
 **Important :** en prod, on utilise le fichier `.env.prod`.  
 Il faut donc préciser `--env-file .env.prod` lors du lancement :
