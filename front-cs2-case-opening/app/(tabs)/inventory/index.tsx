@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useEffect, useState } from "react";
 import { useApi } from "@/hooks/useApi";
+import { saveInventoryLocal, getInventoryLocal } from "@/services/inventoryService";
 
 type Skin = {
   skinId: string;
@@ -55,19 +56,29 @@ export default function InventoryScreen() {
         try {
           setLoadingInv(true);
           const res = await apiFetch(`${API_URL}/users/${user?._id}/inventory`);
-          if (!res || cancelled) return; // 401 géré par apiFetch
+          if (!res || cancelled) return;
+
           const data = await res.json();
-          if (!cancelled) setInventory(data);
+          if (!cancelled) {
+            setInventory(data);
+            await saveInventoryLocal(data);
+          }
         } catch (err) {
-          if (!cancelled) console.error("Erreur fetch inventory:", err);
+          console.error("Erreur fetch inventory:", err);
+
+          // 🔄 fallback offline
+          const localInv = await getInventoryLocal();
+          if (localInv) setInventory(localInv);
         } finally {
           if (!cancelled) setLoadingInv(false);
         }
       })();
 
-      return () => { cancelled = true; };
+      return () => {
+        cancelled = true;
+      };
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user?._id])
+    }, [user?._id, apiFetch])
   );
 
 
@@ -147,7 +158,7 @@ export default function InventoryScreen() {
             }}
           >
             <Image
-              source={{ uri: `${API_URL}/uploads/${item.imageUrl}` }}
+              source={{ uri: item.imageUrl }} 
               style={styles.skinImage}
               resizeMode="contain"
             />
@@ -188,7 +199,7 @@ export default function InventoryScreen() {
                 </Text>
 
                 <Image
-                  source={{ uri: `${API_URL}/uploads/${selectedSkin.imageUrl}` }}
+                  source={{ uri: selectedSkin.imageUrl }}
                   style={styles.largeImage}
                   resizeMode="contain"
                 />

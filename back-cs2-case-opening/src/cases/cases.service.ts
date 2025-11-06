@@ -171,4 +171,58 @@ export class CasesService {
       message: 'Probabilités mises à jour avec succès',
     };
   }
+  async syncOfflineSkin(
+    caseId: string,
+    body: {
+      userId: string;
+      skinId: string;
+      name: string;
+      rarity: string;
+      imageUrl: string;
+      cost?: number;
+    },
+  ) {
+    const { userId, skinId, name, rarity, imageUrl, cost } = body;
+
+    if (!Types.ObjectId.isValid(caseId)) {
+      throw new NotFoundException('Caisse introuvable.');
+    }
+
+    // Vérifie si la caisse existe
+    const caseObj = await this.caseModel.findById(caseId).lean().exec();
+    if (!caseObj) throw new NotFoundException('Caisse introuvable.');
+
+    // Vérifie si le skin existe déjà (ex: synchronisation après offline)
+    let skin = await this.skinModel.findById(skinId).lean().exec();
+    if (!skin) {
+      // si skin inexistant → on le crée
+      skin = await this.skinModel.create({
+        _id: new Types.ObjectId(skinId), // garde l'id offline si valide
+        case_id: new Types.ObjectId(caseId),
+        name,
+        rarity,
+        imageUrl,
+        cost: cost ?? 0,
+      });
+      skin = skin.toObject();
+    }
+
+    // Ajoute le skin dans l’inventaire de l’utilisateur
+    await this.inventoryModel.create({
+      user_id: new Types.ObjectId(userId),
+      skin_id: skin._id,
+      case_id: new Types.ObjectId(caseId),
+    });
+    return {
+      success: true,
+      message: 'Skin synchronisé avec succès',
+      skin: {
+        skinId: skin._id,
+        name: skin.name,
+        rarity: skin.rarity,
+        cost: skin.cost,
+        imageUrl: this.buildImageUrl(skin.imageUrl),
+      },
+    };
+  }
 }

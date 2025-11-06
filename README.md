@@ -138,9 +138,9 @@ EXPO_PUBLIC_API_URL=http://192.168.1.25:3000
 EXPO_PUBLIC_API_URL=https://api.mondomaine.com
 ```
 
-Remplacer **`192.168.1.25`** par l’IP locale de ton PC si tu testes sur smartphone physique avec **Expo Go**.
+Remplacer **`192.168.1.25`** par l’IP locale de ton PC si vous testez sur smartphone physique avec **Expo Go**.
 
-Dans ton code, tu récupères l’URL de l’API ainsi :
+Dans ton code, vous récuperez l’URL de l’API ainsi :
 
 ```ts
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
