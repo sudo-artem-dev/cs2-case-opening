@@ -67,7 +67,7 @@ jobs:
             docker pull ghcr.io/${{ secrets.GHCR_USERNAME }}/cs2-case-opening-api:latest
 
             echo "==> Mise à jour des conteneurs (backend + MongoDB)"
-            cd /Bureau/403-filrouge-TATKOV-Artem/cs2-case-opening
+            cd ~/Bureau/403-filrouge-TATKOV-Artem/cs2-case-opening
             docker compose -f docker-compose.prod.yml down
             docker compose -f docker-compose.prod.yml up -d
 
