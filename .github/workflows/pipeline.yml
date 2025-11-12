@@ -1,0 +1,74 @@
+name: CI/CD - Build, Publish & Deploy (Backend only)
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: cs2-case-opening-api
+
+jobs:
+  # --------- JOB 1 : CI/CD - Build et publication Docker ----------
+  build_and_publish:
+    runs-on: [self-hosted, ci]   # ✅ runner CI/CD avec label "ci"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ---- BACKEND NODE (IMAGE DOCKER) ----
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.GHCR_USERNAME }}
+          password: ${{ secrets.GHCR_PAT }}
+
+      - name: Build backend Docker image
+        run: |
+          docker build -f back-cs2-case-opening/Dockerfile.prod \
+            -t $REGISTRY/${{ secrets.GHCR_USERNAME }}/$IMAGE_NAME:latest \
+            -t $REGISTRY/${{ secrets.GHCR_USERNAME }}/$IMAGE_NAME:${{ github.sha }} \
+            back-cs2-case-opening
+
+      - name: Push backend image to GHCR
+        run: |
+          docker push $REGISTRY/${{ secrets.GHCR_USERNAME }}/$IMAGE_NAME:latest
+          docker push $REGISTRY/${{ secrets.GHCR_USERNAME }}/$IMAGE_NAME:${{ github.sha }}
+
+      - name: Clean old Docker images
+        run: docker image prune -f
+
+
+  # --------- JOB 2 : Déploiement sur serveur de PROD ----------
+  deploy:
+    runs-on: [self-hosted, ci]     # ✅ même runner CI/CD, déploiement via SSH
+    needs: build_and_publish
+    steps:
+      - name: Vérifier la connexion SSH
+        run: ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER_PROD }}@${{ secrets.SSH_HOST_PROD }} "echo '✅ SSH OK'"
+
+      - name: Déployer le backend sur le serveur de production
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.SSH_HOST_PROD }}
+          username: ${{ secrets.SSH_USER_PROD }}
+          key: ${{ secrets.SSH_PRIVATE_KEY_PROD }}
+          script: |
+            echo "==> Connexion à GitHub Container Registry"
+            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
+
+            echo "==> Téléchargement de la dernière image backend"
+            docker pull ghcr.io/${{ secrets.GHCR_USERNAME }}/cs2-case-opening-api:latest
+
+            echo "==> Mise à jour des conteneurs (backend + MongoDB)"
+            cd /Bureau/403-filrouge-TATKOV-Artem/cs2-case-opening
+            docker compose -f docker-compose.prod.yml down
+            docker compose -f docker-compose.prod.yml up -d
+
+            echo "✅ Déploiement backend terminé avec succès."
