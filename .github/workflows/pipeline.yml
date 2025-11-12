@@ -68,7 +68,7 @@ jobs:
 
             echo "==> Mise à jour des conteneurs (backend + MongoDB)"
             cd ~/Bureau/403-filrouge-TATKOV-Artem/cs2-case-opening
-            docker compose -f docker-compose.prod.yml down
-            docker compose -f docker-compose.prod.yml up -d
+            docker compose --env-file .env.prod -f docker-compose.prod.yml down
+            docker compose --env-file .env.prod -f docker-compose.prod.yml up -d
 
             echo "✅ Déploiement backend terminé avec succès."
