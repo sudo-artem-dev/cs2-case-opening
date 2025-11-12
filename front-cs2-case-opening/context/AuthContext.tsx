@@ -64,35 +64,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
     if (synced) {
-      const now = new Date().toLocaleString();
-      setLastSyncUp(now);
+      const now = new Date().toISOString();
+      setLastSyncUp(new Date(now).toLocaleString());
+      await AsyncStorage.setItem("lastSyncUp", now);
       setShowSyncUp(true);
       setTimeout(() => setShowSyncUp(false), 5000);
+      return true;
     }
+    return false;
   }, [user]);
 
   // Synchro serveur → mobile (uniquement si inventaire a changé)
   const syncDown = useCallback(async () => {
     if (!user) return;
     try {
-      const res = await fetch(`${API_URL}/users/${user._id}/inventory`, {
+      // Récupérer la dernière date de synchro locale (stockée en ISO)
+      const lastSyncStr = await AsyncStorage.getItem("lastSyncDown");
+      const lastSyncDate = lastSyncStr ? new Date(lastSyncStr) : null;
+
+      // Construire l’URL avec ou sans le paramètre ?since=
+      const url = lastSyncDate
+        ? `${API_URL}/users/${user._id}/inventory?since=${encodeURIComponent(
+            lastSyncDate.toISOString()
+          )}`
+        : `${API_URL}/users/${user._id}/inventory`;
+      console.log("📡 syncDown URL appelée :", url);
+
+      // Appel au serveur
+      const res = await fetch(url, {
         headers: { Authorization: `Bearer ${user.token}` },
       });
 
-      if (res.ok) {
-        const newData = await res.json();
-        const oldData = await getInventoryLocal();
+      if (!res.ok) return;
 
-        // comparer ancien inventaire avec le nouveau
-        if (JSON.stringify(newData) !== JSON.stringify(oldData)) {
-          // maintenant on fusionne au lieu d’écraser
-          await mergeInventoryLocal(newData);
+      const serverData = await res.json();
+      const localData = await getInventoryLocal();
 
-          const now = new Date().toLocaleString();
-          setLastSyncDown(now);
-          setShowSyncDown(true);
-          setTimeout(() => setShowSyncDown(false), 5000);
+      let updated = false;
+
+      // Si pas encore de synchro → première synchro complète
+      if (!lastSyncDate || !localData) {
+        await mergeInventoryLocal(serverData);
+        updated = true;
+      } else {
+        // Si le serveur renvoie des skins récents, on les fusionne
+        if (serverData.skins && serverData.skins.length > 0) {
+          await mergeInventoryLocal({
+            ...localData,
+            skins: [...localData.skins, ...serverData.skins],
+          });
+          updated = true;
         }
+      }
+
+      if (updated) {
+        const now = new Date().toISOString();
+        await AsyncStorage.setItem("lastSyncDown", now);
+        setLastSyncDown(new Date(now).toLocaleString());
+        setShowSyncDown(true);
+        setTimeout(() => setShowSyncDown(false), 5000);
       }
     } catch (e) {
       console.warn("Erreur syncDown:", e);
@@ -112,8 +142,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // ⚡ On vient juste de repasser online
           setIsOffline(false);
   
-          await syncUp();
-          await syncDown();
+          const syncedUp = await syncUp();
+          if (!syncedUp) {
+            await syncDown();
+          }
         } else {
           // déjà online → pas de synchro répétée
           setIsOffline(false);
@@ -134,6 +166,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (storedUser) {
           setUser(JSON.parse(storedUser));
         }
+  
+        // Charger les dates de synchro sauvegardées
+        const [lastUp, lastDown] = await Promise.all([
+          AsyncStorage.getItem("lastSyncUp"),
+          AsyncStorage.getItem("lastSyncDown"),
+        ]);
+  
+        if (lastUp) setLastSyncUp(new Date(lastUp).toLocaleString());
+        if (lastDown) setLastSyncDown(new Date(lastDown).toLocaleString());
       } finally {
         setLoading(false);
       }

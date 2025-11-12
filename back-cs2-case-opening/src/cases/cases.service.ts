@@ -134,6 +134,8 @@ export class CasesService {
     await this.inventoryModel.create({
       user_id: new Types.ObjectId(userId),
       skin_id: chosenSkin._id,
+      created_at: new Date(),
+      updated_at: new Date(),
     });
 
     return {

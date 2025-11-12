@@ -12,6 +12,7 @@ export const savePendingSkin = async (skin: Skin, caseId: string, userId: string
       caseId,
       userId,
       createdAt: Date.now(),
+      updatedAt: Date.now(),
     };
     const key = `pending_${skin._id}_${Date.now()}`;
     await AsyncStorage.setItem(key, JSON.stringify(pending));
@@ -66,6 +67,8 @@ export const syncPendingSkins = async (
               rarity: item.rarity,
               imageUrl: item.imageUrl,
               cost: item.cost,
+              createdAt: item.createdAt || Date.now(),
+              updatedAt: item.updatedAt || Date.now(),
             }),
           });
   
