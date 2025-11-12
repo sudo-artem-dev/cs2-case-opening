@@ -4,6 +4,7 @@ import {
   InternalServerErrorException,
   Param,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -16,8 +17,8 @@ export class UsersController {
 
   @Get(':id/inventory')
   @UseGuards(JwtAuthGuard)
-  async getInventory(@Param('id') id: string) {
-    return this.usersService.getUserInventory(id);
+  async getInventory(@Param('id') id: string, @Query('since') since?: string) {
+    return this.usersService.getUserInventory(id, since);
   }
 
   @Get()

@@ -48,7 +48,7 @@ export default function TabLayout() {
           {/* 🕒 Dernière synchro */}
           {(lastSyncUp || lastSyncDown) && (
             <Text style={{ color: "#fff", textAlign: "center", marginTop: 5 }}>
-              Dernière synchro : {lastSyncUp || lastSyncDown}
+              Dernière synchronistation : {lastSyncUp || lastSyncDown}
             </Text>
           )}
         </View>
@@ -66,7 +66,7 @@ export default function TabLayout() {
         >
           <Text style={{ color: "#fff", textAlign: "center" }}>
             Données locales synchronisées vers le serveur{"\n"}
-            Dernière synchro : {lastSyncUp}
+            Dernière synchronisation : {lastSyncUp}
           </Text>
         </View>
       )}
@@ -83,7 +83,7 @@ export default function TabLayout() {
         >
           <Text style={{ color: "#fff", textAlign: "center" }}>
             Données mises à jour depuis le serveur{"\n"}
-            Dernière synchro : {lastSyncDown}
+            Dernière synchronisation : {lastSyncDown}
           </Text>
         </View>
       )}

@@ -21,7 +21,7 @@ export class UsersService {
     @InjectModel(Skin.name) private skinModel: Model<SkinDocument>,
   ) {}
 
-  async getUserInventory(userId: string) {
+  async getUserInventory(userId: string, since?: string) {
     if (!Types.ObjectId.isValid(userId)) {
       throw new NotFoundException('Utilisateur introuvable.');
     }
@@ -30,8 +30,17 @@ export class UsersService {
     if (!user) throw new NotFoundException('Utilisateur introuvable.');
 
     try {
+      const filter: any = { user_id: new Types.ObjectId(userId) };
+
+      // Si "since" est fourni → on ne récupère que les inventaires modifiés après cette date
+      if (since) {
+        const sinceDate = new Date(since);
+        if (!isNaN(sinceDate.getTime())) {
+          filter.updated_at = { $gte: sinceDate };
+        }
+      }
       const inventory = await this.inventoryModel
-        .find({ user_id: new Types.ObjectId(userId) })
+        .find(filter)
         .populate('skin_id')
         .exec();
 
@@ -44,6 +53,7 @@ export class UsersService {
           rarity: skin.rarity,
           imageUrl: `${baseUrl}/uploads/${skin.imageUrl}`,
           cost: skin.cost,
+          updatedAt: inv.updated_at,
         };
       });
 
