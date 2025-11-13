@@ -33,6 +33,13 @@ export default function LoginScreen() {
         body: JSON.stringify({ pseudo, password }),
       });
 
+
+      // ❗ Identifiants incorrects → message direct → PAS de mode offline
+      if (response.status === 401 || response.status === 400) {
+        setErrorMessage("Identifiants invalides");
+        return;
+      }
+  
       if (response.ok) {
         const data = await response.json();
 
@@ -47,8 +54,9 @@ export default function LoginScreen() {
         router.replace("/(tabs)/cases");
         return;
       }
-
-      throw new Error("Identifiants invalides");
+  
+      // Toute autre erreur = probablement réseau
+      throw new Error("Network error");
     } catch {
       console.warn("Connexion online échouée, tentative offline…");
 
