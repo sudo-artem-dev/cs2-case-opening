@@ -30,96 +30,106 @@ export default function TabLayout() {
 
   return (
     <View style={{ flex: 1 }}>
-      {/* 🔴 Hors ligne */}
-      {isOffline && (
-        <View
-          style={{
-            backgroundColor: "#b00020",
-            padding: 10,
-            borderRadius: 5,
-            margin: 10,
-          }}
-        >
-          <Text style={{ color: "#fff", textAlign: "center" }}>
-            Vous êtes hors ligne.{"\n"}
-            Les données ne sont pas synchronisées.
-          </Text>
-
-          {/* 🕒 Dernière synchro */}
-          {(lastSyncUp || lastSyncDown) && (
-            <Text style={{ color: "#fff", textAlign: "center", marginTop: 5 }}>
-              Dernière synchronistation : {lastSyncUp || lastSyncDown}
-            </Text>
-          )}
-        </View>
-      )}
-
-      {/* 🟢 Synchro offline → serveur */}
-      {!isOffline && showSyncUp && lastSyncUp && (
-        <View
-          style={{
-            backgroundColor: "#1e88e5",
-            padding: 10,
-            borderRadius: 5,
-            margin: 10,
-          }}
-        >
-          <Text style={{ color: "#fff", textAlign: "center" }}>
-            Données locales synchronisées vers le serveur{"\n"}
-            Dernière synchronisation : {lastSyncUp}
-          </Text>
-        </View>
-      )}
-
-      {/* 🟢 Synchro serveur → mobile */}
-      {!isOffline && showSyncDown && lastSyncDown && (
-        <View
-          style={{
-            backgroundColor: "#2e7d32",
-            padding: 10,
-            borderRadius: 5,
-            margin: 10,
-          }}
-        >
-          <Text style={{ color: "#fff", textAlign: "center" }}>
-            Données mises à jour depuis le serveur{"\n"}
-            Dernière synchronisation : {lastSyncDown}
-          </Text>
-        </View>
-      )}
-
-      {/* ✅ Navigation Tabs */}
       <Tabs
         screenOptions={{
-          headerStyle: {
-            backgroundColor: "#111015",
-            borderBottomColor: "#efeff5",
-            borderBottomWidth: 2,
-          },
-          headerTitleAlign: "center",
-          headerTintColor: "#efeff5",
-          headerTitle: () => (
-            <Text style={{ textAlign: "center" }}>
-              <Text
-                style={{ fontSize: 18, fontWeight: "bold", color: "#efeff5" }}
+          header: () => (
+            <View style={{ backgroundColor: "#111015" }}>
+
+              {/* Safe area pour éviter Dynamic Island */}
+              <View style={{ height: 45 }} />
+
+              {/* NAVBAR */}
+              <View
+                style={{
+                  paddingVertical: 10,
+                  borderBottomColor: "#efeff5",
+                  borderBottomWidth: 2,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
               >
-                {pseudo}
-              </Text>
-              {user?.role === "admin" && (
-                <Text style={{ fontSize: 14, color: "#aaa", marginTop: 2 }}>
-                  {"\n"}Admin
+                {/* Bouton retour */}
+                <View style={{ position: "absolute", left: 15 }}>
+                  <BackButton />
+                </View>
+
+                {/* Titre */}
+                <Text style={{ textAlign: "center" }}>
+                  <Text style={{ fontSize: 18, fontWeight: "bold", color: "#efeff5" }}>
+                    {pseudo}
+                  </Text>
+                  {user?.role === "admin" && (
+                    <Text style={{ fontSize: 14, color: "#aaa" }}>{"\n"}Admin</Text>
+                  )}
                 </Text>
+
+                {/* Logout */}
+                <View style={{ position: "absolute", right: 15 }}>
+                  <TouchableOpacity onPress={handleLogout}>
+                    <Image
+                      source={require("../../assets/images/logout.png")}
+                      style={{ width: 24, height: 24, tintColor: "#efeff5" }}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* MESSAGES RESEAU SOUS LA NAVBAR */}
+              {isOffline && (
+                <View
+                  style={{
+                    width: "100%",
+                    backgroundColor: "#b00020",
+                    paddingVertical: 12,
+                    alignItems: "center",
+                  }}
+                >
+                  <Text style={{ color: "#fff", textAlign: "center" }}>
+                    Vous êtes hors ligne.{"\n"}
+                    Les données ne sont pas synchronisées.
+                  </Text>
+
+                  {(lastSyncUp || lastSyncDown) && (
+                    <Text style={{ color: "#fff", marginTop: 5 }}>
+                      Dernière synchronisation : {lastSyncUp || lastSyncDown}
+                    </Text>
+                  )}
+                </View>
               )}
-            </Text>
-          ),
-          headerLeft: () => <BackButton />,
-          headerRight: () => (
-            <TouchableOpacity onPress={handleLogout} style={{ marginRight: 15 }}>
-              <Image
-                source={require("../../assets/images/logout.png")}
-                style={{ width: 24, height: 24, tintColor: "#efeff5" }}
-              />
-            </TouchableOpacity>
+
+              {!isOffline && showSyncUp && lastSyncUp && (
+                <View
+                  style={{
+                    width: "100%",
+                    backgroundColor: "#1e88e5",
+                    paddingVertical: 12,
+                    alignItems: "center",
+                  }}
+                >
+                  <Text style={{ color: "#fff", textAlign: "center" }}>
+                    Données locales synchronisées vers le serveur{"\n"}
+                    Dernière synchronisation : {lastSyncUp}
+                  </Text>
+                </View>
+              )}
+
+              {!isOffline && showSyncDown && lastSyncDown && (
+                <View
+                  style={{
+                    width: "100%",
+                    backgroundColor: "#2e7d32",
+                    paddingVertical: 12,
+                    alignItems: "center",
+                  }}
+                >
+                  <Text style={{ color: "#fff", textAlign: "center" }}>
+                    Données mises à jour depuis le serveur{"\n"}
+                    Dernière synchronisation : {lastSyncDown}
+                  </Text>
+                </View>
+              )}
+
+            </View>
           ),
           headerShadowVisible: false,
           tabBarShowLabel: true,
@@ -133,7 +143,7 @@ export default function TabLayout() {
             backgroundColor: "#111015",
             borderTopColor: "#efeff5",
             borderTopWidth: 2,
-            height: 80,
+            height: 100,
             paddingTop: 10,
           },
         }}

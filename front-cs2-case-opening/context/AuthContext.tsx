@@ -7,6 +7,8 @@ import React, {
   ReactNode,
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import NetInfo from "@react-native-community/netinfo";
+import { Platform } from "react-native";
 import { syncPendingSkins } from "@/services/syncService";
 import {
   getInventoryLocal,
@@ -185,18 +187,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // 📡 Lancement auto des vérifs toutes les 20s
   useEffect(() => {
     if (!user) return;
-
-    checkConnection(); // première vérif
-
-    const updateStatus = () => checkConnection();
-    window.addEventListener("online", updateStatus);
-    window.addEventListener("offline", updateStatus);
-
+  
+    checkConnection(); // première vérif immédiate
+  
+    // --- MOBILE (Android/iOS via Expo) ---
+    const unsubscribeNetInfo = NetInfo.addEventListener((state) => {
+      const offline = !state.isConnected;
+      setIsOffline(offline);
+  
+      // si on redevient online → relancer les synchros
+      if (!offline) {
+        checkConnection();
+      }
+    });
+  
+    // --- WEB (seulement sur navigateur) ---
+    let cleanupBrowserListeners = () => {};
+  
+    if (Platform.OS === "web") {
+      const updateStatus = () => checkConnection();
+  
+      window.addEventListener("online", updateStatus);
+      window.addEventListener("offline", updateStatus);
+  
+      cleanupBrowserListeners = () => {
+        window.removeEventListener("online", updateStatus);
+        window.removeEventListener("offline", updateStatus);
+      };
+    }
+  
+    // --- Vérifs régulières toutes les 5 secondes ---
     const interval = setInterval(checkConnection, 5000);
-
+  
     return () => {
-      window.removeEventListener("online", updateStatus);
-      window.removeEventListener("offline", updateStatus);
+      unsubscribeNetInfo();   // mobile
+      cleanupBrowserListeners(); // web
       clearInterval(interval);
     };
   }, [user, checkConnection]);
