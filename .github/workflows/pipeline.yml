@@ -41,8 +41,8 @@ jobs:
           docker push $REGISTRY/${{ secrets.GHCR_USERNAME }}/$IMAGE_NAME:latest
           docker push $REGISTRY/${{ secrets.GHCR_USERNAME }}/$IMAGE_NAME:${{ github.sha }}
 
-      - name: Clean old Docker images
-        run: docker image prune -f
+      # - name: Clean old Docker images
+      #   run: docker image prune -f
 
 
   # --------- JOB 2 : Déploiement sur serveur de PROD ----------
