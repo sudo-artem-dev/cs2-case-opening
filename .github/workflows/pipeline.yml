@@ -16,7 +16,7 @@ env:
 jobs:
   # --------- JOB 1 : CI/CD - Build et publication Docker ----------
   build_and_publish:
-    runs-on: self-hosted   # ✅ runner CI/CD avec label "ci"
+    runs-on: self-hosted   # runner CI/CD avec label "ci"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
