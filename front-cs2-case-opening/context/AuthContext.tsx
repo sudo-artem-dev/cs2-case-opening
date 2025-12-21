@@ -14,6 +14,7 @@ import {
   getInventoryLocal,
   mergeInventoryLocal,
 } from "@/services/inventoryService";
+import { socket } from "@/services/socket";
 
 type User = {
   _id: string;
@@ -183,6 +184,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     loadUser();
   }, []);
+
+  // 🔌 WebSocket : connexion / déconnexion selon l'utilisateur
+  useEffect(() => {
+    if (user?._id) {
+      console.log("🔌 Connexion WebSocket");
+      socket.connect();
+
+      socket.emit("join", { userId: user._id });
+    } else {
+      if (socket.connected) {
+        console.log("🔌 Déconnexion WebSocket");
+        socket.disconnect();
+      }
+    }
+
+    return () => {
+      if (socket.connected) {
+        socket.disconnect();
+      }
+    };
+  }, [user?._id]);
 
   // 📡 Lancement auto des vérifs toutes les 20s
   useEffect(() => {

@@ -9,6 +9,7 @@ import { Model, Types } from 'mongoose';
 import { Case, CaseDocument } from './schemas/case.schema';
 import { Skin, SkinDocument } from './schemas/skin.schema';
 import { Inventory, InventoryDocument } from './schemas/inventory.schema';
+import { InventoryGateway } from '../websocket/inventory.gateway';
 
 @Injectable()
 export class CasesService {
@@ -17,6 +18,7 @@ export class CasesService {
     @InjectModel(Skin.name) private skinModel: Model<SkinDocument>,
     @InjectModel(Inventory.name)
     private inventoryModel: Model<InventoryDocument>,
+    private inventoryGateway: InventoryGateway,
   ) {}
 
   private buildImageUrl(path: string): string {
@@ -122,7 +124,7 @@ export class CasesService {
       .lean()
       .exec();
 
-    if (!skins || skins.length === 0) {
+    if (!skins.length) {
       throw new InternalServerErrorException(
         'Aucun skin trouvé pour cette rareté.',
       );
@@ -138,6 +140,33 @@ export class CasesService {
       updated_at: new Date(),
     });
 
+    const inventoryDocs = await this.inventoryModel
+      .find({ user_id: new Types.ObjectId(userId) })
+      .populate('skin_id')
+      .lean()
+      .exec();
+
+    const inventory = {
+      _id: userId,
+      totalSkins: inventoryDocs.length,
+      totalValue: inventoryDocs.reduce(
+        (sum, i: any) => sum + (i.skin_id?.cost || 0),
+        0,
+      ),
+      skins: inventoryDocs.map((i: any) => ({
+        skinId: i.skin_id._id,
+        name: i.skin_id.name,
+        rarity: i.skin_id.rarity,
+        cost: i.skin_id.cost,
+        imageUrl: this.buildImageUrl(i.skin_id.imageUrl),
+        case_id: caseId,
+      })),
+    };
+
+    // 🚀 PUSH WEB SOCKET (TEMPS RÉEL)
+    this.inventoryGateway.emitInventoryUpdate(userId, inventory);
+
+    // 🔁 RÉPONSE HTTP (pour l’animation roulette)
     return {
       _id: caseId,
       userId,

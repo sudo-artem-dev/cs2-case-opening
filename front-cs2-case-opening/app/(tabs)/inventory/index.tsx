@@ -1,10 +1,10 @@
 import { View, Text, StyleSheet, FlatList, Image, ActivityIndicator, TouchableOpacity, Modal } from "react-native";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "expo-router";
-import { useFocusEffect } from "@react-navigation/native";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useApi } from "@/hooks/useApi";
 import { saveInventoryLocal, getInventoryLocal } from "@/services/inventoryService";
+import { socket } from "@/services/socket";
 
 type Skin = {
   skinId: string;
@@ -48,39 +48,57 @@ export default function InventoryScreen() {
     }
   }, [loading, user, router]);
 
-  useFocusEffect(
-    useCallback(() => {
-      let cancelled = false;
-
-      (async () => {
-        try {
-          setLoadingInv(true);
-          const res = await apiFetch(`${API_URL}/users/${user?._id}/inventory`);
-          if (!res || cancelled) return;
-
-          const data = await res.json();
-          if (!cancelled) {
-            setInventory(data);
-            await saveInventoryLocal(data);
-          }
-        } catch (err) {
-          console.error("Erreur fetch inventory:", err);
-
-          // 🔄 fallback offline
-          const localInv = await getInventoryLocal();
-          if (localInv) setInventory(localInv);
-        } finally {
-          if (!cancelled) setLoadingInv(false);
+  useEffect(() => {
+    let cancelled = false;
+  
+    const loadInventory = async () => {
+      try {
+        setLoadingInv(true);
+  
+        const res = await apiFetch(`${API_URL}/users/${user?._id}/inventory`);
+        if (!res || cancelled) return;
+  
+        const data = await res.json();
+        if (!cancelled) {
+          setInventory(data);
+          await saveInventoryLocal(data);
         }
-      })();
+      } catch (err) {
+        console.error("Erreur fetch inventory:", err);
+  
+        const localInv = await getInventoryLocal();
+        if (!cancelled && localInv) {
+          setInventory(localInv);
+        }
+      } finally {
+        if (!cancelled) setLoadingInv(false);
+      }
+    };
+  
+    if (user?._id) {
+      loadInventory();
+    }
+  
+    return () => {
+      cancelled = true;
+    };
+  //eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?._id, apiFetch]);  
 
-      return () => {
-        cancelled = true;
-      };
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user?._id, apiFetch])
-  );
-
+  useEffect(() => {
+    const handleInventoryUpdate = async (updatedInventory: InventoryResponse) => {
+      console.log("📦 inventory:update reçu");
+  
+      setInventory(updatedInventory);
+      await saveInventoryLocal(updatedInventory);
+    };
+  
+    socket.on("inventory:update", handleInventoryUpdate);
+  
+    return () => {
+      socket.off("inventory:update", handleInventoryUpdate);
+    };
+  }, []);  
 
   if (loading || loadingInv) {
     return <ActivityIndicator size="large" color="#fff" style={{ flex: 1 }} />;

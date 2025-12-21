@@ -8,6 +8,7 @@ import { Case, CaseSchema } from './schemas/case.schema';
 import { Skin, SkinSchema } from './schemas/skin.schema';
 import { Inventory, InventorySchema } from './schemas/inventory.schema';
 import { AuthModule } from '../auth/auth.module';
+import { WebsocketModule } from '../websocket/websocket.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { AuthModule } from '../auth/auth.module';
       { name: Inventory.name, schema: InventorySchema },
     ]),
     AuthModule,
+    WebsocketModule,
   ],
   controllers: [CasesController, SkinsController],
   providers: [CasesService, SkinsService],
